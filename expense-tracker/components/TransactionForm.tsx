@@ -4,17 +4,33 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useExpenseStore } from '@/store/useExpenseStore'
 import { addTransaction } from '@/lib/transactions'
-import { Category, CATEGORY_LABELS, CATEGORY_ICONS, CATEGORY_COLORS } from '@/types'
+import {
+  Category,
+  CATEGORY_LABELS,
+  CATEGORY_ICONS,
+  CATEGORY_COLORS,
+} from '@/types'
 import { format } from 'date-fns'
 
-const CATEGORIES: Category[] = ['food', 'transport', 'shopping', 'entertainment', 'health', 'other']
+const CATEGORIES: Category[] = [
+  'office',
+  'travel',
+  'salary',
+  'utilities',
+  'marketing',
+  'software',
+  'maintenance',
+  'other',
+]
 
 export default function TransactionForm() {
   const { user } = useAuth()
-  const { isFormOpen, setFormOpen, addTransaction: addToStore } = useExpenseStore()
+  const { isFormOpen, setFormOpen, addTransaction: addToStore } =
+    useExpenseStore()
 
   const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState<Category>('food')
+  const [category, setCategory] = useState<Category>('office')
+  const [type, setType] = useState<'expense' | 'income'>('expense')
   const [note, setNote] = useState('')
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [loading, setLoading] = useState(false)
@@ -24,7 +40,6 @@ export default function TransactionForm() {
   const amountRef = useRef<HTMLInputElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
 
-  // Focus amount on open
   useEffect(() => {
     if (isFormOpen) {
       setTimeout(() => amountRef.current?.focus(), 150)
@@ -33,7 +48,6 @@ export default function TransactionForm() {
     }
   }, [isFormOpen])
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') handleClose()
@@ -45,10 +59,10 @@ export default function TransactionForm() {
   const handleClose = () => {
     if (loading) return
     setFormOpen(false)
-    // reset after animation
     setTimeout(() => {
       setAmount('')
-      setCategory('food')
+      setCategory('office')
+      setType('expense')
       setNote('')
       setDate(format(new Date(), 'yyyy-MM-dd'))
       setError('')
@@ -60,13 +74,9 @@ export default function TransactionForm() {
     e.preventDefault()
     if (!user) return
 
-    const parsed = parseFloat(amount.replace(/,/g, ''))
+    const parsed = parseFloat(amount)
     if (!parsed || parsed <= 0) {
       setError('กรุณาระบุจำนวนเงินที่ถูกต้อง')
-      return
-    }
-    if (parsed > 10_000_000) {
-      setError('จำนวนเงินสูงสุดคือ 10,000,000 บาท')
       return
     }
 
@@ -74,7 +84,8 @@ export default function TransactionForm() {
     setError('')
 
     try {
-      const month = date.slice(0, 7) // 'yyyy-MM'
+      const month = date.slice(0, 7)
+
       const tx = await addTransaction({
         userId: user.uid,
         amount: parsed,
@@ -83,241 +94,125 @@ export default function TransactionForm() {
         date,
         month,
         createdAt: Date.now(),
+        type,
       })
 
-      // Optimistic update
       addToStore(tx)
       setSuccess(true)
 
-      // Auto-close after short delay
-      setTimeout(() => handleClose(), 900)
-    } catch (err) {
-      setError('เกิดข้อผิดพลาด กรุณาลองใหม่')
+      setTimeout(() => handleClose(), 800)
+    } catch {
+      setError('เกิดข้อผิดพลาด')
     } finally {
       setLoading(false)
     }
   }
 
-  // Format amount with commas as user types
-  const handleAmountChange = (val: string) => {
-    const raw = val.replace(/[^0-9.]/g, '')
-    const parts = raw.split('.')
-    if (parts.length > 2) return
-    if (parts[1] && parts[1].length > 2) return
-    setAmount(raw)
-  }
-
-  const displayAmount = amount
-    ? Number(amount.replace(/,/g, '')).toLocaleString('th-TH', {
-        maximumFractionDigits: 2,
-        minimumFractionDigits: amount.includes('.') ? undefined : 0,
-      })
-    : ''
+  // auto set salary = income
+  useEffect(() => {
+    if (category === 'salary') setType('income')
+  }, [category])
 
   if (!isFormOpen) return null
 
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur"
       onClick={(e) => e.target === overlayRef.current && handleClose()}
     >
-      <div
-        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl overflow-hidden animate-fade-up"
-        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
-      >
+      <div className="w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl bg-[#111118] border border-white/10 p-5">
+
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4"
-          style={{ borderBottom: '1px solid var(--border)' }}>
-          <div>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>
-              เพิ่มรายการใหม่
-            </h2>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              บันทึกค่าใช้จ่ายของคุณ
-            </p>
-          </div>
-          <button
-            onClick={handleClose}
-            disabled={loading}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:opacity-70"
-            style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
-          </button>
+        <div className="flex justify-between mb-4">
+          <h2 className="text-white font-semibold">เพิ่มรายการ</h2>
+          <button onClick={handleClose}>✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-5 py-5 space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Amount input — big and prominent */}
-          <div>
-            <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-sub)' }}>
-              จำนวนเงิน (บาท)
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold"
-                style={{ color: 'var(--text-muted)' }}>฿</span>
-              <input
-                ref={amountRef}
-                type="text"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => handleAmountChange(e.target.value)}
-                placeholder="0.00"
-                required
-                className="w-full pl-9 pr-4 py-4 rounded-xl text-2xl font-semibold outline-none transition-all"
-                style={{
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text)',
-                  caretColor: 'var(--accent)',
-                }}
-                onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onBlur={e => e.currentTarget.style.borderColor = 'var(--border)'}
-              />
-              {amount && (
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs"
-                  style={{ color: 'var(--text-muted)' }}>
-                  {displayAmount} บาท
-                </span>
-              )}
-            </div>
+          {/* TYPE */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setType('expense')}
+              className={`flex-1 py-2 rounded-lg ${
+                type === 'expense'
+                  ? 'bg-red-500/20 text-red-400'
+                  : 'bg-white/5 text-gray-400'
+              }`}
+            >
+              รายจ่าย
+            </button>
+            <button
+              type="button"
+              onClick={() => setType('income')}
+              className={`flex-1 py-2 rounded-lg ${
+                type === 'income'
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-white/5 text-gray-400'
+              }`}
+            >
+              รายรับ
+            </button>
           </div>
 
-          {/* Category selector */}
-          <div>
-            <label className="block text-xs font-medium mb-2.5" style={{ color: 'var(--text-sub)' }}>
-              หมวดหมู่
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {CATEGORIES.map((cat) => {
-                const active = category === cat
-                const col = CATEGORY_COLORS[cat]
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl text-xs font-medium transition-all duration-150"
-                    style={{
-                      background: active ? col.bg : 'var(--bg-elevated)',
-                      border: active ? `1.5px solid ${col.text}40` : '1px solid var(--border)',
-                      color: active ? col.text : 'var(--text-muted)',
-                    }}
-                  >
-                    <span className="text-lg leading-none">{CATEGORY_ICONS[cat]}</span>
-                    {CATEGORY_LABELS[cat]}
-                  </button>
-                )
-              })}
-            </div>
+          {/* AMOUNT */}
+          <input
+            ref={amountRef}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="จำนวนเงิน"
+            className="w-full p-4 rounded-xl bg-white/5 text-white text-xl"
+          />
+
+          {/* CATEGORY */}
+          <div className="grid grid-cols-4 gap-2 max-h-[180px] overflow-y-auto">
+            {CATEGORIES.map((cat) => {
+              const active = category === cat
+              const col = CATEGORY_COLORS[cat]
+
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategory(cat)}
+                  className="p-2 rounded-xl text-xs flex flex-col items-center"
+                  style={{
+                    background: active ? col.bg : '#1a1a24',
+                    color: active ? col.text : '#aaa',
+                  }}
+                >
+                  {CATEGORY_ICONS[cat]}
+                  {CATEGORY_LABELS[cat]}
+                </button>
+              )
+            })}
           </div>
 
-          {/* Note + Date row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-sub)' }}>
-                หมายเหตุ
-              </label>
-              <input
-                type="text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="เช่น ข้าวมันไก่"
-                maxLength={60}
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-all"
-                style={{
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text)',
-                }}
-                onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onBlur={e => e.currentTarget.style.borderColor = 'var(--border)'}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-sub)' }}>
-                วันที่
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-all"
-                style={{
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text)',
-                  colorScheme: 'dark',
-                }}
-                onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onBlur={e => e.currentTarget.style.borderColor = 'var(--border)'}
-              />
-            </div>
-          </div>
+          {/* NOTE */}
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="หมายเหตุ"
+            className="w-full p-3 rounded-xl bg-white/5 text-white"
+          />
 
-          {/* Error */}
-          {error && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-              style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', color: 'var(--danger)' }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="shrink-0">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              {error}
-            </div>
-          )}
+          {/* DATE */}
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full p-3 rounded-xl bg-white/5 text-white"
+          />
 
-          {/* Success */}
-          {success && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-              style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', color: 'var(--success)' }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="shrink-0">
-                <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              บันทึกสำเร็จแล้ว!
-            </div>
-          )}
+          {/* ERROR */}
+          {error && <div className="text-red-400">{error}</div>}
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading || success}
-            className="w-full py-3.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
-            style={{
-              background: success ? 'var(--success)' : 'var(--accent)',
-              boxShadow: loading || success ? 'none' : '0 0 24px var(--accent-glow)',
-            }}
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin-slow w-4 h-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
-                </svg>
-                กำลังบันทึก...
-              </>
-            ) : success ? (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                บันทึกสำเร็จ!
-              </>
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-                </svg>
-                บันทึกรายการ
-              </>
-            )}
+          {/* BUTTON */}
+          <button className="w-full py-3 bg-indigo-500 rounded-xl text-white">
+            {loading ? 'กำลังบันทึก...' : 'บันทึก'}
           </button>
-
         </form>
       </div>
     </div>
