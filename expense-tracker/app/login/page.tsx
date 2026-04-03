@@ -55,6 +55,8 @@ export default function LoginPage() {
         </Link>
 
         {/* Header */}
+        <center>
+
         <div className="animate-fade-up-1 mb-8">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5"
             style={{ background: 'var(--accent)', boxShadow: '0 0 24px var(--accent-glow)' }}>
@@ -70,6 +72,7 @@ export default function LoginPage() {
             เข้าสู่ระบบเพื่อดู dashboard ของคุณ
           </p>
         </div>
+        </center>
 
         {/* Card */}
         <div className="animate-fade-up-2 rounded-2xl p-6"
@@ -84,7 +87,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="admin@example.com"
                 required
                 className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all duration-200"
                 style={{
@@ -147,14 +150,6 @@ export default function LoginPage() {
 
           </form>
         </div>
-
-        <p className="animate-fade-up-3 text-center text-sm mt-6" style={{ color: 'var(--text-muted)' }}>
-          ยังไม่มีบัญชี?{' '}
-          <Link href="/register" className="font-medium transition-colors hover:opacity-80"
-            style={{ color: 'var(--accent)' }}>
-            สมัครสมาชิกฟรี
-          </Link>
-        </p>
 
       </div>
     </main>
