@@ -2,13 +2,13 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+    <main className="min-h-screen flex flex-col items-center justify-center bg-gray-50" style={{ background: 'var(--bg)' }}>
       <div className="text-center space-y-6 ">
         <div className="space-y-2 ">
-          <h1 className="text-4xl font-semibold text-gray-900 sm:text-5xl">
+          <h1 className="text-4xl font-semibold text-gray-900 sm:text-5xl" style={{ color: 'var(--text)' }}>
             Smart Expense Tracker
           </h1>
-          <p className="text-gray-500 text-lg sm:text-xl">
+          <p className="text-gray-500 text-lg sm:text-xl" style={{ color: 'var(--text-muted)' }}>
             Record expenses Financial analysis with AI
           </p>
         </div>
@@ -16,6 +16,7 @@ export default function Home() {
           <Link
             href="/login"
             className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+            style={{ background: 'var(--accent)', color: 'white' }}
           >
             Login
           </Link>
